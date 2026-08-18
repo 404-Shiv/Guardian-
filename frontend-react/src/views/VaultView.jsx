@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Key, Folder, AlertTriangle, Filter, RefreshCw, ShieldAlert, CheckCircle, Shield, Archive, RotateCcw } from 'lucide-react';
+import { Lock, Key, Folder, AlertTriangle, Filter, RefreshCw, ShieldAlert, CheckCircle, Shield } from 'lucide-react';
 import { authorizeContainer, rotateContainer, revokeContainer, updateConfig } from '../services/api';
 
 const VaultView = () => {
@@ -65,9 +65,6 @@ const VaultView = () => {
     },
   ]);
 
-  // Executed & Quarantined Container Archive
-  const [executedContainers, setExecutedContainers] = useState([]);
-
   const [accessLogs, setAccessLogs] = useState([
     { time: '14:02:11 UTC', user: 'USR_ADMIN_01', action: 'READ: DB_CREDENTIALS_MAIN', detail: 'IP: 192.168.1.104 (AUTHORIZED)', isHighlight: false },
     { time: '13:45:00 UTC', user: 'SYSTEM_CRON', action: 'ROTATED: API_KEYS', detail: 'SUCCESS: NEW KEY DEPLOYED', isHighlight: true },
@@ -81,7 +78,7 @@ const VaultView = () => {
     setModalOpen(true);
   };
 
-  // Confirm and execute action: remove/shift container out of active grid into Executed Archive
+  // Confirm and execute action: COMPLETELY REMOVE container from list upon execution/rotation/revocation
   const handleConfirmAction = async () => {
     if (!modalAction) return;
 
@@ -106,45 +103,25 @@ const VaultView = () => {
       } else if (type === 'rotate') {
         await rotateContainer(container.id);
 
-        // REMOVE CONTAINER FROM ACTIVE GRID AND SHIFT TO EXECUTED ARCHIVE
-        const executedObj = {
-          ...container,
-          tag: 'ROTATED_SECURED',
-          isDue: false,
-          statusText: 'EXECUTED & ROTATED (JUST NOW)',
-          executedTime: timeStr,
-          executedAction: 'CREDENTIALS ROTATED',
-        };
-
+        // COMPLETELY REMOVE CONTAINER FROM ENCRYPTED CONTAINERS LIST
         setContainers((prev) => prev.filter((c) => c.id !== container.id));
-        setExecutedContainers((prev) => [executedObj, ...prev]);
 
         setAccessLogs((prev) => [
-          { time: timeStr, user: 'SYSTEM_ADMIN', action: `ROTATED_&_REMOVED: ${container.title}`, detail: 'CONTAINER EXECUTED, ROTATED, AND SHIFTED TO SECURED ARCHIVE', isHighlight: true },
+          { time: timeStr, user: 'SYSTEM_ADMIN', action: `EXECUTED_&_REMOVED: ${container.title}`, detail: 'SUCCESS: CONTAINER EXECUTED AND REMOVED FROM VAULT', isHighlight: true },
           ...prev,
         ]);
-        setStatusToast(`CONTAINER ${container.title} EXECUTED & SHIFTED TO SECURED ARCHIVE`);
+        setStatusToast(`CONTAINER EXECUTED AND REMOVED: ${container.title}`);
       } else if (type === 'revoke') {
         await revokeContainer(container.id);
 
-        // REMOVE CONTAINER FROM ACTIVE GRID AND SHIFT TO EXECUTED ARCHIVE AS REVOKED
-        const revokedObj = {
-          ...container,
-          tag: 'REVOKED_LOCKED',
-          isDue: false,
-          statusText: 'REVOKED & STOPPED',
-          executedTime: timeStr,
-          executedAction: 'ACCESS STOPPED',
-        };
-
+        // COMPLETELY REMOVE CONTAINER FROM ENCRYPTED CONTAINERS LIST
         setContainers((prev) => prev.filter((c) => c.id !== container.id));
-        setExecutedContainers((prev) => [revokedObj, ...prev]);
 
         setAccessLogs((prev) => [
-          { time: timeStr, user: 'USR_ADMIN_01', action: `STOPPED_&_REMOVED: ${container.title}`, detail: 'CONTAINER EXECUTED, ACCESS REVOKED, AND SHIFTED OUT OF ACTIVE GRID', isHighlight: true },
+          { time: timeStr, user: 'USR_ADMIN_01', action: `STOPPED_&_REMOVED: ${container.title}`, detail: 'SUCCESS: CONTAINER ACCESS STOPPED AND REMOVED FROM VAULT', isHighlight: true },
           ...prev,
         ]);
-        setStatusToast(`CONTAINER ${container.title} ACCESS STOPPED & REMOVED FROM ACTIVE GRID`);
+        setStatusToast(`CONTAINER ACCESS STOPPED AND REMOVED: ${container.title}`);
       }
     } catch (err) {
       setStatusToast(`ACTION EXECUTED FOR ${container.title}`);
@@ -155,30 +132,13 @@ const VaultView = () => {
     }
   };
 
-  // Restore container back to active grid if requested
-  const handleRestoreContainer = (executedObj) => {
-    const restoredObj = {
-      ...executedObj,
-      tag: 'PROD_ENV',
-      statusText: 'RESTORED: ACTIVE',
-      statusType: 'normal',
-      isDue: false,
-      isRevealed: false,
-      value: '••••••••••••••••••••',
-    };
-    setExecutedContainers((prev) => prev.filter((c) => c.id !== executedObj.id));
-    setContainers((prev) => [restoredObj, ...prev]);
-    setStatusToast(`CONTAINER ${executedObj.title} RESTORED TO ACTIVE GRID`);
-    setTimeout(() => setStatusToast(null), 3000);
-  };
-
   const handleApplyPolicies = async () => {
     await updateConfig({ autoRotate, strictTtl, ttlInterval });
     setStatusToast('ROTATION POLICIES UPDATED SUCCESSFULLY');
     setTimeout(() => setStatusToast(null), 3000);
   };
 
-  // Filter & Shift Active Container list dynamically by Category
+  // Filter Active Container list dynamically by Category
   const filteredContainers = containers.filter((c) => {
     if (activeCategory === 'ALL') return true;
     if (activeCategory === 'ROTATION_DUE') return c.isDue;
@@ -243,20 +203,16 @@ const VaultView = () => {
 
       {/* Main Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '16px' }}>
-        {/* Left Column: ENCRYPTED CONTAINERS & EXECUTED ARCHIVE */}
+        {/* Left Column: ENCRYPTED CONTAINERS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Header Bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1.5px', color: '#ffffff' }}>
               ENCRYPTED CONTAINERS ({containers.length} ACTIVE {dueCount > 0 ? `| ${dueCount} DUE` : '| ALL SECURED'})
             </div>
-
-            <div style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700 }}>
-              {executedContainers.length} EXECUTED & CLEARED
-            </div>
           </div>
 
-          {/* Category Filter Buttons ("Swifting Tabs") */}
+          {/* Category Filter Buttons */}
           <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
             {[
               { id: 'ALL', label: `ALL (${containers.length})` },
@@ -409,67 +365,8 @@ const VaultView = () => {
               })}
             </div>
           ) : (
-            <div style={{ background: '#111215', border: '1px border #22242a', padding: '24px', borderRadius: '2px', textAlign: 'center', color: '#888888', fontSize: '0.75rem' }}>
-              ✓ NO CONTAINERS MATCHING CATEGORY: {activeCategory}
-            </div>
-          )}
-
-          {/* EXECUTED & QUARANTINED CONTAINERS ARCHIVE PANEL */}
-          {executedContainers.length > 0 && (
-            <div className="tactical-panel" style={{ marginTop: '10px', padding: '16px', borderColor: '#10b981' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #22242a', paddingBottom: '8px', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 800, color: '#10b981', letterSpacing: '1px' }}>
-                  <Archive size={14} />
-                  <span>EXECUTED & CLEARED CONTAINERS ({executedContainers.length})</span>
-                </div>
-                <span style={{ fontSize: '0.62rem', color: '#555866' }}>REMOVED FROM ACTIVE ROTATION</span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {executedContainers.map((exec) => (
-                  <div
-                    key={exec.id}
-                    style={{
-                      background: '#08080a',
-                      border: '1px solid #22242a',
-                      padding: '10px 14px',
-                      borderRadius: '2px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff' }}>
-                        {exec.title} <span style={{ fontSize: '0.6rem', color: '#10b981', marginLeft: '6px' }}>[{exec.executedAction}]</span>
-                      </div>
-                      <div style={{ fontSize: '0.65rem', color: '#555866', marginTop: '2px' }}>
-                        EXECUTED AT {exec.executedTime} — REMOVED FROM ACTIVE GRID
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleRestoreContainer(exec)}
-                      style={{
-                        background: '#18191e',
-                        color: '#cccccc',
-                        border: '1px solid #333540',
-                        fontSize: '0.6rem',
-                        fontWeight: 700,
-                        padding: '4px 10px',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <RotateCcw size={10} />
-                      <span>RESTORE</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
+            <div style={{ background: '#111215', border: '1px solid #22242a', padding: '24px', borderRadius: '2px', textAlign: 'center', color: '#888888', fontSize: '0.75rem' }}>
+              ✓ ALL CONTAINERS EXECUTED & REMOVED
             </div>
           )}
         </div>
@@ -602,7 +499,7 @@ const VaultView = () => {
             <div style={{ marginTop: '16px', fontSize: '0.8rem', color: '#ffffff', lineHeight: 1.6 }}>
               You are requesting to{' '}
               <strong style={{ color: modalAction.type === 'revoke' ? '#ef4444' : '#ff4422' }}>
-                {modalAction.type === 'access' ? 'ACCESS & REVEAL' : modalAction.type === 'rotate' ? 'ROTATE & REMOVE FROM ACTIVE GRID' : 'STOP & REMOVE FROM ACTIVE GRID'}
+                {modalAction.type === 'access' ? 'ACCESS & REVEAL' : modalAction.type === 'rotate' ? 'EXECUTE ROTATION & REMOVE FROM VAULT' : 'STOP ACCESS & REMOVE FROM VAULT'}
               </strong>{' '}
               container:
               <div style={{
@@ -618,7 +515,7 @@ const VaultView = () => {
                 {modalAction.container.title}
               </div>
               <div style={{ fontSize: '0.72rem', color: '#a0a4b0' }}>
-                Upon confirmation, this container will be executed, cleared out of the active grid, and recorded in the immutable security audit log under user <strong>USR_ADMIN_01</strong>.
+                Upon confirmation, this container will be executed, completely removed from the ENCRYPTED CONTAINERS list, and recorded in the immutable security audit log under user <strong>USR_ADMIN_01</strong>.
               </div>
             </div>
 
