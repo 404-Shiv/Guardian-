@@ -1,4 +1,4 @@
-# 🛡️ GUARDIAN — Autonomous Cyber Defense Commander
+# GUARDIAN — Autonomous Cyber Defense Commander
 
 AI-powered cybersecurity platform that detects threats, reconstructs attacks, simulates impact, and recommends the best response.
 
@@ -8,7 +8,6 @@ AI-powered cybersecurity platform that detects threats, reconstructs attacks, si
 - **Threat Hunter Agent** — Pattern detection (brute force, credential dumping, exfiltration, etc.)
 - **Correlation Agent** — Links related events into attack chains by IP/user/host/time
 - **MITRE ATT&CK Mapper** — Maps detections to ATT&CK techniques (`T1110`, `T1059.001`, `T1068`, `T1003`, `T1041`, etc.)
-- **Digital Twin** — Infrastructure network simulation with response impact calculations
 - **Response Agent** — Generates and scores candidate response plans
 - **Adversarial Agent** — Red-team challenges exposing plan weaknesses
 - **Decision Agent** — Selects optimal response with full justification
