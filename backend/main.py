@@ -4,8 +4,9 @@ import json
 import os
 import sys
 from typing import Optional
+from datetime import datetime
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -44,16 +45,12 @@ async def startup():
 
 @app.post("/api/logs/upload")
 async def upload_logs(file: Optional[UploadFile] = File(None)):
-    """
-    Upload log files (JSON or CSV).
-    If no file is provided, loads the sample data.
-    """
+    """Upload log files (JSON or CSV). If no file is provided, loads sample data."""
     if file:
         content = await file.read()
         content_str = content.decode("utf-8")
         file_type = "csv" if file.filename and file.filename.endswith(".csv") else "json"
     else:
-        # Load sample data
         sample_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "sample_logs.json")
         if not os.path.exists(sample_path):
             raise HTTPException(status_code=404, detail="Sample data file not found")
@@ -173,6 +170,66 @@ async def execute_response(incident_id: str, plan_id: str = "plan_c"):
         "message": f"Response plan '{plan['name']}' executed successfully",
         "plan": plan,
         "status": "executed",
+    }
+
+
+# ──────────────────────────── Vault Endpoints ────────────────────────────
+
+@app.post("/api/vault/containers/{container_id}/authorize")
+async def authorize_container(container_id: str):
+    """Authorize access to an encrypted vault container."""
+    return {
+        "status": "authorized",
+        "container_id": container_id,
+        "timestamp": datetime.utcnow().strftime("%H:%M:%S UTC"),
+        "user": "USR_ADMIN_01",
+        "message": f"Access granted for container '{container_id}'",
+    }
+
+
+@app.post("/api/vault/containers/{container_id}/rotate")
+async def rotate_container(container_id: str):
+    """Rotate credentials for a vault container."""
+    return {
+        "status": "rotated",
+        "container_id": container_id,
+        "timestamp": datetime.utcnow().strftime("%H:%M:%S UTC"),
+        "user": "SYSTEM_ADMIN",
+        "message": f"Credentials rotated for '{container_id}'",
+    }
+
+
+@app.post("/api/vault/containers/{container_id}/revoke")
+async def revoke_container(container_id: str):
+    """Revoke / stop access to a vault container."""
+    return {
+        "status": "revoked",
+        "container_id": container_id,
+        "timestamp": datetime.utcnow().strftime("%H:%M:%S UTC"),
+        "user": "USR_ADMIN_01",
+        "message": f"Access REVOKED and STOPPED for container '{container_id}'",
+    }
+
+
+# ──────────────────────────── Config & System Endpoints ────────────────────────────
+
+@app.post("/api/config/update")
+async def update_config(payload: dict = Body(...)):
+    """Save system configuration options."""
+    return {
+        "status": "saved",
+        "config": payload,
+        "message": "Configuration updated successfully",
+    }
+
+
+@app.post("/api/system/restart-daemon")
+async def restart_daemon():
+    """Restart system defense daemon."""
+    return {
+        "status": "restarted",
+        "message": "System defense daemon restarted successfully",
+        "timestamp": datetime.utcnow().strftime("%H:%M:%S UTC"),
     }
 
 

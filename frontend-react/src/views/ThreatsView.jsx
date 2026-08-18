@@ -1,202 +1,201 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Cpu, Shield, Filter, Download, ExternalLink } from 'lucide-react';
+import { AlertCircle, Filter, Download, Shield, ExternalLink, CheckCircle } from 'lucide-react';
 
-const ThreatsView = () => {
+const ThreatsView = ({ alerts = [] }) => {
   const [selectedIoc, setSelectedIoc] = useState('APT29_KINETIC_PAYLOAD');
+  const [filterSeverity, setFilterSeverity] = useState('ALL');
+  const [showToast, setShowToast] = useState(null);
 
-  const iocs = [
+  const iocList = [
     {
       id: 'APT29_KINETIC_PAYLOAD',
-      type: 'APT29_KINETIC_PAYLOAD',
-      badge: 'CRITICAL',
-      isCritical: true,
-      time: '02:14:4',
-      source: 'EUR_NODE',
-      hash: 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855',
-      icon: AlertTriangle,
+      name: 'APT29_KINETIC_PAYLOAD',
+      type: 'COMMAND_EXECUTION',
+      severity: 'CRITICAL',
+      confidence: '95%',
+      target: '192.168.1.105 (DMZ_NODE_04)',
+      mitre: 'T1059.001 (PowerShell)',
+      timestamp: '14:02:11 UTC',
+      hex: '4d 5a 90 00 03 00 00 00 04 00 00 00 ff ff 00 00  MZ..............\nb8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00  ........@.......\n00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................\n80 00 00 00 0e 1f ba 0e 00 b4 09 cd 21 b8 01 4c  ............!..L',
     },
     {
       id: 'ZERO_DAY_SMB_EXPLOIT',
-      type: 'ZERO_DAY_SMB_EXPLOIT',
-      badge: 'ELEVATED',
-      isCritical: false,
-      time: '01:55:12Z',
-      source: 'US_EAST_1',
-      hash: 'IP: 192.168.45.221 (SPOOFED)',
-      icon: Cpu,
+      name: 'ZERO_DAY_SMB_EXPLOIT',
+      type: 'PRIVILEGE_ESCALATION',
+      severity: 'CRITICAL',
+      confidence: '95%',
+      target: '10.0.0.1 (CORE_ROUTER_01)',
+      mitre: 'T1068 (Privilege Escalation)',
+      timestamp: '13:58:44 UTC',
+      hex: 'fe 53 4d 42 40 00 00 00 00 00 00 00 01 00 00 00  .SMB@...........\n00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................\n05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................',
     },
     {
-      id: 'CREDENTIAL_DUMP_ATTEMPT',
-      type: 'CREDENTIAL_DUMP_ATTEMPT',
-      badge: 'ELEVATED',
-      isCritical: false,
-      time: '01:42:09Z',
-      source: 'INT_DMZ',
-      hash: 'USER: SYSTEM_ADMIN_SVC',
-      icon: Shield,
+      id: 'LSASS_CREDENTIAL_DUMP',
+      name: 'LSASS_CREDENTIAL_DUMP',
+      type: 'CREDENTIAL_ACCESS',
+      severity: 'HIGH',
+      confidence: '93%',
+      target: '192.168.1.4 (DB_CLUSTER_A)',
+      mitre: 'T1003 (OS Credential Dumping)',
+      timestamp: '13:45:02 UTC',
+      hex: '33 43 52 45 44 53 00 00 12 40 00 00 ff 00 00 00  3CREDS...@......\n90 90 90 90 31 c0 50 68 2f 2f 73 68 68 2f 62 69  ....1.Ph//shh/bi',
     },
   ];
 
+  const currentIoc = iocList.find((i) => i.id === selectedIoc) || iocList[0];
+
+  const filteredList = iocList.filter((item) => {
+    if (filterSeverity === 'ALL') return true;
+    return item.severity === filterSeverity;
+  });
+
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(iocList, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "GUARDIAN_IOC_EXPORT.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+
+    setShowToast('THREAT DATA EXPORTED AS GUARDIAN_IOC_EXPORT.json');
+    setTimeout(() => setShowToast(null), 3000);
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      {/* Top Section Header matching New Image 2 */}
-      <div className="threat-header-bar">
-        <div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '1.5px' }}>
-            GLOBAL_THREAT_FEED
-          </div>
-          <div className="threat-header-title">
-            <span>ACTIVE_IOCs</span>
-            <div className="red-dot-live"></div>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, backgroundColor: '#000000', position: 'relative' }}>
+      {/* Toast Notification */}
+      {showToast && (
+        <div style={{
+          position: 'fixed', top: '60px', right: '20px',
+          background: '#111215', border: '1px solid #10b981', color: '#10b981',
+          padding: '12px 20px', borderRadius: '2px', fontSize: '0.78rem', fontWeight: 700,
+          boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: '8px',
+        }}>
+          <CheckCircle size={16} />
+          <span>{showToast}</span>
+        </div>
+      )}
+
+      {/* Top Controls */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffffff', letterSpacing: '1.5px' }}>
+          GLOBAL_THREAT_FEED // ACTIVE_IOCs <span style={{ color: '#ff4422' }}>●</span>
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-tactical btn-override" style={{ padding: '8px 16px' }}>
-            <Filter size={13} /> FILTER
-          </button>
-          <button className="btn-tactical btn-execute" style={{ padding: '8px 16px' }}>
-            <Download size={13} /> EXPORT_DATA
+          {['ALL', 'CRITICAL', 'HIGH'].map((sev) => (
+            <button
+              key={sev}
+              onClick={() => setFilterSeverity(sev)}
+              style={{
+                background: filterSeverity === sev ? '#ffffff' : '#111215',
+                color: filterSeverity === sev ? '#000000' : '#888888',
+                border: '1px solid #333540',
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                padding: '4px 10px',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+            >
+              {sev}
+            </button>
+          ))}
+
+          <button
+            onClick={handleExport}
+            style={{
+              background: '#18191e', color: '#ffffff', border: '1px solid #333540',
+              fontSize: '0.65rem', fontWeight: 700, padding: '4px 12px', borderRadius: '2px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+            }}
+          >
+            <Download size={12} />
+            <span>EXPORT_DATA</span>
           </button>
         </div>
       </div>
 
-      {/* Main Grid: Left IOC List, Right Intel Profile + Hex Dump */}
-      <div className="threats-grid">
-        {/* Left Column: IOC List */}
-        <div>
-          {iocs.map((ioc) => {
-            const Icon = ioc.icon;
+      {/* Main Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '16px' }}>
+        {/* Left Column: Active Threat Cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {filteredList.map((ioc) => {
             const isSelected = selectedIoc === ioc.id;
             return (
               <div
                 key={ioc.id}
-                className={`ioc-card ${ioc.isCritical ? 'critical' : 'elevated'}`}
                 onClick={() => setSelectedIoc(ioc.id)}
                 style={{
-                  background: isSelected ? '#18191e' : 'var(--bg-card-dark)',
-                  borderColor: isSelected ? '#444754' : 'var(--border-color)',
+                  background: isSelected ? 'rgba(255, 68, 34, 0.08)' : '#111215',
+                  border: isSelected ? '2px solid #ff4422' : '1px solid #22242a',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  boxShadow: isSelected ? '0 0 15px rgba(255, 68, 34, 0.3)' : 'none',
                 }}
               >
-                <div className="ioc-icon-box">
-                  <Icon size={18} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#ff4422', letterSpacing: '1px' }}>
+                    {ioc.severity} ({ioc.confidence})
+                  </span>
+                  <span style={{ fontSize: '0.6rem', color: '#555866' }}>{ioc.timestamp}</span>
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <div className="ioc-title-row">
-                    <span>{ioc.type}</span>
-                    <span className={`badge-tag ${ioc.isCritical ? 'critical' : ''}`}>
-                      {ioc.badge}
-                    </span>
-                  </div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffffff', marginTop: '6px' }}>
+                  {ioc.name}
+                </div>
 
-                  <div className="ioc-details">
-                    <div>{ioc.hash}</div>
-                    <div style={{ color: 'var(--text-muted)', marginTop: '4px' }}>
-                      TIMESTAMP: {ioc.time} &nbsp;|&nbsp; SOURCE: {ioc.source}
-                    </div>
-                  </div>
+                <div style={{ fontSize: '0.68rem', color: '#888888', marginTop: '4px' }}>
+                  Target: {ioc.target}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Right Column: Intel Profile + Hex Dump (New Image 2) */}
+        {/* Right Column: Threat Intel Profile & Hex Viewer */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Actor Profile / Intel */}
-          <div className="actor-profile-card">
-            <div className="panel-header" style={{ margin: '-16px -16px 14px -16px', background: 'transparent', borderBottom: '1px solid var(--border-color)' }}>
-              <span>ACTOR_PROFILE // INTEL</span>
-              <ExternalLink size={14} color="#666" />
+          {/* Profile Card */}
+          <div className="tactical-panel" style={{ padding: '20px' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#555866', letterSpacing: '1.5px', marginBottom: '12px' }}>
+              THREAT INTEL PROFILE // {currentIoc.name}
             </div>
 
-            <div className="actor-profile-header">
-              <div className="actor-avatar-img">
-                <span style={{ fontSize: '1.6rem' }}>👤</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '0.75rem' }}>
+              <div>
+                <div style={{ color: '#555866', fontSize: '0.62rem' }}>ATTACK TYPE</div>
+                <div style={{ color: '#ff4422', fontWeight: 700, marginTop: '2px' }}>{currentIoc.type}</div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>COZY_BEAR (APT29)</div>
-                  <span className="badge-tag critical">T1-STATE_SPONSORED</span>
-                </div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  ORIGIN: UNKNOWN // CONFIDENCE: HIGH
-                </div>
+              <div>
+                <div style={{ color: '#555866', fontSize: '0.62rem' }}>MITRE ATT&CK MAPPING</div>
+                <div style={{ color: '#ffffff', fontWeight: 700, marginTop: '2px' }}>{currentIoc.mitre}</div>
               </div>
-            </div>
-
-            <div style={{ fontSize: '0.74rem', color: 'var(--text-normal)', marginTop: '12px', lineHeight: 1.6 }}>
-              Advanced persistent threat group specializing in long-term intelligence gathering. Current TTPs indicate a shift towards highly customized supply-chain attacks leveraging forged SAML tokens.
-            </div>
-
-            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginTop: '16px', letterSpacing: '1px' }}>
-              KNOWN_TTP_VECTORS
-            </div>
-
-            <div className="ttp-vector-grid">
-              <div className="ttp-item">
-                <span>T1190</span>
-                <span style={{ color: '#fff' }}>PUB_FACING_APP</span>
+              <div>
+                <div style={{ color: '#555866', fontSize: '0.62rem' }}>CONFIDENCE RATING</div>
+                <div style={{ color: '#10b981', fontWeight: 700, marginTop: '2px' }}>{currentIoc.confidence} HIGH CONFIDENCE</div>
               </div>
-              <div className="ttp-item">
-                <span>T1078</span>
-                <span style={{ color: '#fff' }}>VALID_ACCTS</span>
-              </div>
-              <div className="ttp-item">
-                <span>T1110</span>
-                <span style={{ color: 'var(--accent-orange)' }}>BRUTE_FORCE</span>
-              </div>
-              <div className="ttp-item">
-                <span>T1555</span>
-                <span style={{ color: '#fff' }}>CRED_FROM_PWD</span>
+              <div>
+                <div style={{ color: '#555866', fontSize: '0.62rem' }}>TARGETED ASSET</div>
+                <div style={{ color: '#00e5ff', fontWeight: 700, marginTop: '2px' }}>{currentIoc.target}</div>
               </div>
             </div>
           </div>
 
-          {/* Payload Analysis / Hex Dump (New Image 2) */}
-          <div className="tactical-panel">
-            <div className="panel-header">
-              <span>PAYLOAD_ANALYSIS // HEX_DUMP</span>
-              <span style={{ width: '8px', height: '8px', background: '#ff4422', borderRadius: '1px' }}></span>
+          {/* Hex Dump Viewer Card */}
+          <div className="tactical-panel" style={{ padding: '16px' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#555866', letterSpacing: '1.5px', marginBottom: '10px' }}>
+              PAYLOAD MEMORY INSPECTOR (RAW HEX DUMP)
             </div>
-            <div className="hex-dump-panel">
-              <div>
-                <span className="hex-offset">00000000</span>
-                <span className="hex-bytes"><span className="hex-highlight">4D 5A</span> 90 00 03 00 00 00 04 00 00 00 FF FF 00 00</span>
-                <span>MZ..............</span>
-              </div>
-              <div>
-                <span className="hex-offset">00000010</span>
-                <span className="hex-bytes">B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00</span>
-                <span>........@.......</span>
-              </div>
-              <div>
-                <span className="hex-offset">00000020</span>
-                <span className="hex-bytes">00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span>
-                <span>................</span>
-              </div>
-              <div>
-                <span className="hex-offset">00000030</span>
-                <span className="hex-bytes">00 00 00 00 00 00 00 00 00 00 00 00 <span className="hex-highlight">80 00 00 00</span></span>
-                <span>............€...</span>
-              </div>
-              <div>
-                <span className="hex-offset">00000040</span>
-                <span className="hex-bytes">0E 1F BA 0E 00 B4 09 CD 21 B8 01 4C CD 21 54 68</span>
-                <span>........!...L.!Th</span>
-              </div>
-              <div>
-                <span className="hex-offset">00000050</span>
-                <span className="hex-bytes">69 73 20 70 72 6f 67 72 61 6d 20 63 61 6e 6e 6f</span>
-                <span>is program canno</span>
-              </div>
-              <div>
-                <span className="hex-offset">00000060</span>
-                <span className="hex-bytes">74 20 62 65 20 72 75 6e 20 69 6e 20 44 4f 53 20</span>
-                <span>t be run in DOS </span>
-              </div>
-            </div>
+
+            <pre style={{
+              background: '#08080a', border: '1px solid #22242a', padding: '14px',
+              color: '#00e5ff', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem',
+              borderRadius: '2px', margin: 0, overflowX: 'auto', lineHeight: 1.6,
+            }}>
+              {currentIoc.hex}
+            </pre>
           </div>
         </div>
       </div>

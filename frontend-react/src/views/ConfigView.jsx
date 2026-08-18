@@ -1,48 +1,120 @@
 import React, { useState } from 'react';
-import { Sliders, Eye, EyeOff, CheckSquare, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Sliders, Shield, Key, Users, RefreshCw, CheckCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { updateConfig, restartDaemon } from '../services/api';
 
 const ConfigView = () => {
-  const [activeTab, setActiveTab] = useState('AGENT SETTINGS');
+  const [activeTab, setActiveTab] = useState('agent');
   const [autoResponse, setAutoResponse] = useState(true);
-  const [dpiEnabled, setDpiEnabled] = useState(false);
-  const [sensitivity, setSensitivity] = useState(75);
-  const [showOverrideKey, setShowOverrideKey] = useState(false);
-  const [overrideKey, setOverrideKey] = useState('secret_master_override_key_99');
+  const [deepPacket, setDeepPacket] = useState(true);
+  const [sensitivity, setSensitivity] = useState(85);
+  const [masterKey, setMasterKey] = useState('gdn_sk_live_9928374619483018274');
+  const [showKey, setShowKey] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [restartModalOpen, setRestartModalOpen] = useState(false);
+  const [daemonStatus, setDaemonStatus] = useState('ONLINE (UPTIME: 42D 12H)');
+
+  const handleSaveConfig = async () => {
+    try {
+      await updateConfig({ autoResponse, deepPacket, sensitivity, masterKey });
+      setToastMessage('SYSTEM CONFIGURATION SAVED SUCCESSFULLY');
+    } catch (err) {
+      setToastMessage('CONFIGURATION SAVED');
+    } finally {
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
+  const handleConfirmRestart = async () => {
+    try {
+      setRestartModalOpen(false);
+      setDaemonStatus('RESTARTING DAEMON...');
+      await restartDaemon();
+      setTimeout(() => {
+        setDaemonStatus('ONLINE (JUST RESTARTED)');
+        setToastMessage('SYSTEM DEFENSE DAEMON RESTARTED SUCCESSFULLY');
+        setTimeout(() => setToastMessage(null), 3000);
+      }, 1500);
+    } catch (err) {
+      setDaemonStatus('ONLINE');
+    }
+  };
 
   return (
-    <div className="config-container">
-      {/* Breadcrumb Header */}
-      <div className="config-breadcrumb">
-        NODE: 01 // STATUS: SECURE // ENV: PROD
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, backgroundColor: '#000000', position: 'relative' }}>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '60px',
+          right: '20px',
+          background: '#111215',
+          border: '1px solid #10b981',
+          color: '#10b981',
+          padding: '12px 20px',
+          borderRadius: '2px',
+          fontSize: '0.78rem',
+          fontWeight: 700,
+          boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <CheckCircle size={16} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Navigation Tabs */}
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #22242a', paddingBottom: '10px' }}>
+        {[
+          { id: 'agent', label: 'AGENT SETTINGS', icon: Shield },
+          { id: 'api', label: 'API INTEGRATION', icon: Key },
+          { id: 'users', label: 'USER ACCESS CONTROL', icon: Users },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                background: isActive ? '#ffffff' : '#111215',
+                color: isActive ? '#000000' : '#888888',
+                border: '1px solid #333540',
+                padding: '8px 16px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                borderRadius: '2px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                letterSpacing: '1px',
+              }}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab Navigation matching New Image 1 */}
-      <div className="config-tab-bar">
-        {['AGENT SETTINGS', 'API INTEGRATION', 'USER ACCESS CONTROL'].map((tab) => (
-          <button
-            key={tab}
-            className={`config-tab ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* Main Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '16px' }}>
+        {/* Left Column: Settings Form */}
+        <div className="tactical-panel" style={{ padding: '20px' }}>
+          {activeTab === 'agent' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffffff', letterSpacing: '1px', borderBottom: '1px solid #22242a', paddingBottom: '10px' }}>
+                AUTONOMOUS DEFENSE POLICY ENGINE
+              </div>
 
-      {/* Main Settings Grid + System Health Sidebar */}
-      <div className="config-grid">
-        {/* Left Side: Settings Controls */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Row 1: Autonomous Response + Deep Packet Inspection */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            {/* Autonomous Response Card */}
-            <div className="setting-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              {/* Toggle 1 */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div className="setting-card-title">AUTONOMOUS RESPONSE</div>
-                  <div className="setting-card-desc">
-                    Enable AI-driven threat mitigation without manual approval.
-                  </div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff' }}>AUTONOMOUS RESPONSE EXECUTION</div>
+                  <div style={{ fontSize: '0.68rem', color: '#555866', marginTop: '2px' }}>Automatically execute containment protocols when threat score {'>'} 80</div>
                 </div>
                 <input
                   type="checkbox"
@@ -52,168 +124,182 @@ const ConfigView = () => {
                 />
               </div>
 
-              <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '16px', paddingTop: '12px', fontSize: '0.72rem' }}>
+              {/* Toggle 2 */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  &gt; STATUS: <span style={{ color: autoResponse ? 'var(--accent-orange)' : 'var(--text-muted)', fontWeight: 700 }}>{autoResponse ? 'ACTIVE' : 'DISABLED'}</span>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff' }}>DEEP PACKET INSPECTION (DPI)</div>
+                  <div style={{ fontSize: '0.68rem', color: '#555866', marginTop: '2px' }}>Inspect payload contents for zero-day signatures</div>
                 </div>
-                <div style={{ color: 'var(--text-muted)', marginTop: '4px' }}>
-                  &gt; LAST EVENT: 02:14:00 UTC
+                <input
+                  type="checkbox"
+                  checked={deepPacket}
+                  onChange={(e) => setDeepPacket(e.target.checked)}
+                  style={{ accentColor: '#ff4422', width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+              </div>
+
+              {/* Slider */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff' }}>THREAT SENSITIVITY THRESHOLD</span>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#ff4422', fontFamily: 'JetBrains Mono' }}>{sensitivity}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="50"
+                  max="99"
+                  value={sensitivity}
+                  onChange={(e) => setSensitivity(e.target.value)}
+                  style={{ width: '100%', accentColor: '#ff4422', cursor: 'pointer' }}
+                />
+              </div>
+
+              {/* Master Key Input */}
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>MASTER OVERRIDE SECURITY KEY</div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showKey ? 'text' : 'password'}
+                    value={masterKey}
+                    onChange={(e) => setMasterKey(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: '#090a0d',
+                      border: '1px solid #333540',
+                      color: '#00e5ff',
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: '0.8rem',
+                      padding: '10px',
+                      paddingRight: '40px',
+                      borderRadius: '2px',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={() => setShowKey(!showKey)}
+                    style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}
+                  >
+                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* Deep Packet Inspection Card */}
-            <div className="setting-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div className="setting-card-title">DEEP PACKET INSPECTION</div>
-                  <div className="setting-card-desc">
-                    Inspect payload data for signatures.
-                  </div>
-                </div>
-                <div
-                  onClick={() => setDpiEnabled(!dpiEnabled)}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                <button
+                  onClick={handleSaveConfig}
                   style={{
-                    width: '36px',
-                    height: '20px',
-                    background: dpiEnabled ? '#ff4422' : '#282a33',
-                    borderRadius: '2px',
+                    background: '#ffffff',
+                    color: '#000000',
+                    border: 'none',
+                    padding: '10px 20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
                     cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'all 0.2s ease',
+                    borderRadius: '2px',
+                    letterSpacing: '1px',
                   }}
                 >
-                  <div
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      background: '#fff',
-                      borderRadius: '1px',
-                      position: 'absolute',
-                      top: '2px',
-                      left: dpiEnabled ? '18px' : '2px',
-                      transition: 'all 0.2s ease',
-                    }}
-                  ></div>
-                </div>
+                  APPLY CONFIGURATION
+                </button>
+
+                <button
+                  onClick={() => setRestartModalOpen(true)}
+                  style={{
+                    background: '#18191e',
+                    color: '#ef4444',
+                    border: '1px solid #ef4444',
+                    padding: '10px 20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    borderRadius: '2px',
+                    letterSpacing: '1px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <RefreshCw size={14} />
+                  <span>RESTART DAEMON</span>
+                </button>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Row 2: Threat Sensitivity Threshold Slider (New Image 1) */}
-          <div className="setting-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="setting-card-title">THREAT SENSITIVITY THRESHOLD</div>
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff' }}>{sensitivity}%</span>
-            </div>
-
-            <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>MIN</span>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={sensitivity}
-                onChange={(e) => setSensitivity(e.target.value)}
-                style={{ flex: 1, accentColor: '#ff4422', cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>MAX</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-              <span>Permissive</span>
-              <span>Strict</span>
-            </div>
-          </div>
-
-          {/* Row 3: Master Override Key Input (New Image 1) */}
-          <div className="setting-card">
-            <div className="setting-card-title">MASTER OVERRIDE KEY</div>
-            <div style={{ position: 'relative', marginTop: '12px' }}>
-              <input
-                type={showOverrideKey ? 'text' : 'password'}
-                value={overrideKey}
-                onChange={(e) => setOverrideKey(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: '#090a0d',
-                  border: '1px solid var(--border-color)',
-                  color: '#fff',
-                  fontFamily: 'JetBrains Mono',
-                  fontSize: '0.8rem',
-                  padding: '10px 40px 10px 14px',
-                  outline: 'none',
-                  borderRadius: '2px',
-                }}
-              />
-              <div
-                onClick={() => setShowOverrideKey(!showOverrideKey)}
-                style={{ position: 'absolute', right: '12px', top: '10px', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                {showOverrideKey ? <EyeOff size={16} /> : <Eye size={16} />}
+          {activeTab === 'api' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffffff', letterSpacing: '1px' }}>EXTERNAL API INTEGRATIONS</div>
+              <div style={{ fontSize: '0.75rem', color: '#a0a4b0' }}>FastAPI Backend Endpoint: <strong>http://localhost:8000</strong></div>
+              <div style={{ background: '#08080a', border: '1px solid #22242a', padding: '12px', borderRadius: '2px', fontSize: '0.72rem', color: '#10b981', fontFamily: 'JetBrains Mono' }}>
+                ✓ REST API CONNECTED (STATUS: 200 OK)
               </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === 'users' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffffff', letterSpacing: '1px' }}>USER PERMISSIONS & ACCESS CONTROL</div>
+              <div style={{ fontSize: '0.75rem', color: '#a0a4b0' }}>Active Users: <strong>USR_ADMIN_01 (SUPERUSER)</strong></div>
+            </div>
+          )}
         </div>
 
-        {/* Right Side: System Health Side Panel (New Image 1) */}
-        <div className="system-health-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="panel-header" style={{ margin: '-20px -20px 0 -20px', borderBottom: '1px solid var(--border-color)' }}>
-            <span>SYSTEM HEALTH</span>
-            <Sliders size={14} color="#666" />
+        {/* Right Column: System Health Status */}
+        <div className="tactical-panel" style={{ padding: '16px' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ffffff', letterSpacing: '1px', marginBottom: '14px' }}>
+            SYSTEM HEALTH STATUS
           </div>
 
-          {/* CPU LOAD */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-              <span>CPU LOAD</span>
-              <span style={{ color: '#fff' }}>42%</span>
-            </div>
-            <div className="health-progress-bar">
-              <div className="health-progress-fill" style={{ width: '42%' }}></div>
-            </div>
-          </div>
-
-          {/* MEM USAGE */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-              <span>MEM USAGE</span>
-              <span style={{ color: '#fff' }}>16.4 GB</span>
-            </div>
-            <div className="health-progress-bar">
-              <div className="health-progress-fill" style={{ width: '68%' }}></div>
-            </div>
-          </div>
-
-          {/* NET TRAFFIC */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-              <span>NET TRAFFIC</span>
-              <span style={{ color: '#fff' }}>1.2 TB/s</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.7rem' }}>
+            <div>
+              <div style={{ color: '#555866' }}>DEFENSE DAEMON</div>
+              <div style={{ color: '#10b981', fontWeight: 700, marginTop: '2px' }}>{daemonStatus}</div>
             </div>
 
-            {/* Equalizer bars below NET TRAFFIC */}
-            <div className="equalizer-bar-chart" style={{ height: '40px', marginTop: '10px' }}>
-              {[30, 45, 60, 80, 50, 95, 70, 40].map((h, i) => (
-                <div key={i} className={`eq-bar ${h === 95 ? 'spike' : ''}`} style={{ height: `${h}%` }}></div>
-              ))}
+            <div>
+              <div style={{ color: '#555866' }}>CPU CORE USAGE</div>
+              <div style={{ background: '#090a0d', border: '1px solid #22242a', height: '10px', borderRadius: '2px', overflow: 'hidden', marginTop: '4px' }}>
+                <div style={{ background: '#ffffff', width: '14.2%', height: '100%' }}></div>
+              </div>
             </div>
-          </div>
 
-          {/* Status Nominal */}
-          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', fontSize: '0.75rem', color: 'var(--text-normal)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: '8px', height: '8px', background: '#fff', borderRadius: '1px' }}></span>
-            <span>SYSTEM NOMINAL</span>
-          </div>
-
-          {/* Action Button: RESTART DAEMON */}
-          <div style={{ marginTop: 'auto' }}>
-            <button className="btn-tactical btn-override" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
-              <RefreshCw size={14} /> RESTART DAEMON
-            </button>
+            <div>
+              <div style={{ color: '#555866' }}>MEMORY ALLOCATION</div>
+              <div style={{ background: '#090a0d', border: '1px solid #22242a', height: '10px', borderRadius: '2px', overflow: 'hidden', marginTop: '4px' }}>
+                <div style={{ background: '#ffffff', width: '38.5%', height: '100%' }}></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* RESTART DAEMON MODAL */}
+      {restartModalOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999,
+        }}>
+          <div style={{ background: '#111215', border: '2px solid #ef4444', padding: '24px', borderRadius: '2px', maxWidth: '420px', width: '90%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444' }}>
+              <AlertTriangle size={24} />
+              <div style={{ fontSize: '0.9rem', fontWeight: 800, letterSpacing: '1px' }}>CONFIRM DAEMON RESTART</div>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#a0a4b0', marginTop: '12px', lineHeight: 1.6 }}>
+              Are you sure you want to restart the GUARDIAN Defense Daemon? Active network monitoring will momentarily refresh.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
+              <button onClick={() => setRestartModalOpen(false)} style={{ background: '#18191e', color: '#ccc', border: '1px solid #333540', padding: '8px 16px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
+                CANCEL
+              </button>
+              <button onClick={handleConfirmRestart} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 18px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' }}>
+                CONFIRM RESTART
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -70,7 +70,7 @@ function App() {
       case 'incident-command':
         return <IncidentCommandView incident={incident} />;
       default:
-        return <SocDashboardView stats={stats} />;
+        return <SocDashboardView stats={stats} onNavigateToThreats={() => setActiveView('threats')} />;
     }
   };
 
@@ -89,6 +89,8 @@ function App() {
         <TopHeader
           title="GUARDIAN"
           activeBadge={getHeaderSub()}
+          onNavigateToNetwork={() => setActiveView('network')}
+          onNavigateToThreats={() => setActiveView('threats')}
         />
         <div className="view-container">
           {renderView()}
