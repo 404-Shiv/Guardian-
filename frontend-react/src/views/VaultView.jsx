@@ -1,40 +1,23 @@
 import React, { useState } from 'react';
-import { Lock, Key, Folder, AlertTriangle, Filter, RefreshCw, Eye, ShieldAlert, CheckCircle, Ban } from 'lucide-react';
+import { Lock, Key, Folder, AlertTriangle, Filter, RefreshCw, Eye, ShieldAlert, CheckCircle, Shield, Plus, X } from 'lucide-react';
 import { authorizeContainer, rotateContainer, revokeContainer, updateConfig } from '../services/api';
 
 const VaultView = () => {
   const [autoRotate, setAutoRotate] = useState(true);
   const [strictTtl, setStrictTtl] = useState(false);
   const [ttlInterval, setTtlInterval] = useState('60 DAYS');
+  const [activeCategory, setActiveCategory] = useState('ALL');
 
   // Confirmation Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState(null); // { type: 'access'|'rotate'|'revoke', container: object }
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [newContainerName, setNewContainerName] = useState('');
+  const [newContainerTag, setNewContainerTag] = useState('PROD_ENV');
+  const [newContainerSecret, setNewContainerSecret] = useState('');
   const [statusToast, setStatusToast] = useState(null);
 
   const [containers, setContainers] = useState([
-    {
-      id: 'DB_CREDENTIALS_MAIN',
-      type: 'folder',
-      tag: 'PROD_ENV',
-      title: 'DB_CREDENTIALS_MAIN',
-      value: '••••••••••••••••••••',
-      rawSecret: 'postgres://admin:P@ssw0rd2026!@192.168.1.4:5432/guardian_db',
-      statusText: 'ROTATED: 2H AGO',
-      statusType: 'normal',
-      isRevealed: false,
-    },
-    {
-      id: 'AWS_ROOT_ACCESS',
-      type: 'key',
-      tag: 'API_KEYS',
-      title: 'AWS_ROOT_ACCESS',
-      value: '••••••••••••••••••••',
-      rawSecret: 'AKIAIOSFODNN7EXAMPLE:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
-      statusText: 'ROTATED: 1D AGO',
-      statusType: 'normal',
-      isRevealed: false,
-    },
     {
       id: 'STRIPE_WEBHOOK_SEC',
       type: 'warning',
@@ -48,6 +31,30 @@ const VaultView = () => {
       isRevealed: false,
     },
     {
+      id: 'DB_CREDENTIALS_MAIN',
+      type: 'folder',
+      tag: 'PROD_ENV',
+      title: 'DB_CREDENTIALS_MAIN',
+      value: '••••••••••••••••••••',
+      rawSecret: 'postgres://admin:P@ssw0rd2026!@192.168.1.4:5432/guardian_db',
+      statusText: 'ROTATED: 2H AGO',
+      statusType: 'normal',
+      isDue: false,
+      isRevealed: false,
+    },
+    {
+      id: 'AWS_ROOT_ACCESS',
+      type: 'key',
+      tag: 'API_KEYS',
+      title: 'AWS_ROOT_ACCESS',
+      value: '••••••••••••••••••••',
+      rawSecret: 'AKIAIOSFODNN7EXAMPLE:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+      statusText: 'ROTATED: 1D AGO',
+      statusType: 'normal',
+      isDue: false,
+      isRevealed: false,
+    },
+    {
       id: 'WILDCARD_TLS_2024',
       type: 'key',
       tag: 'CERTIFICATES',
@@ -56,6 +63,7 @@ const VaultView = () => {
       rawSecret: '-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIJAL0...\n-----END CERTIFICATE-----',
       statusText: 'VALID: 180 DAYS',
       statusType: 'normal',
+      isDue: false,
       isRevealed: false,
     },
   ]);
@@ -73,7 +81,7 @@ const VaultView = () => {
     setModalOpen(true);
   };
 
-  // Confirm and execute action against Backend API
+  // Confirm and execute action against Backend API with dynamic state shift
   const handleConfirmAction = async () => {
     if (!modalAction) return;
 
@@ -86,7 +94,7 @@ const VaultView = () => {
         setContainers((prev) =>
           prev.map((c) =>
             c.id === container.id
-              ? { ...c, isRevealed: true, value: c.rawSecret, statusText: 'ACCESS AUTHORIZED', statusType: 'active' }
+              ? { ...c, isRevealed: true, value: c.rawSecret, statusText: 'ACCESS AUTHORIZED (REVEALED)', statusType: 'active' }
               : c
           )
         );
@@ -97,32 +105,42 @@ const VaultView = () => {
         setStatusToast(`ACCESS AUTHORIZED FOR ${container.title}`);
       } else if (type === 'rotate') {
         await rotateContainer(container.id);
+        // Shift container from expired warning state to clean secured state
         setContainers((prev) =>
           prev.map((c) =>
             c.id === container.id
-              ? { ...c, tag: 'PROD_ENV', isDue: false, statusText: 'ROTATED: JUST NOW', statusType: 'normal', isRevealed: false, value: '••••••••••••••••••••' }
+              ? {
+                  ...c,
+                  type: 'folder',
+                  tag: 'PROD_ENV',
+                  isDue: false,
+                  statusText: 'ROTATED: JUST NOW',
+                  statusType: 'normal',
+                  isRevealed: false,
+                  value: '••••••••••••••••••••',
+                }
               : c
           )
         );
         setAccessLogs((prev) => [
-          { time: timeStr, user: 'USR_ADMIN_01', action: `ROTATED: ${container.title}`, detail: 'SUCCESS: NEW KEY GENERATED', isHighlight: true },
+          { time: timeStr, user: 'SYSTEM_ADMIN', action: `CREDENTIALS_ROTATED: ${container.title}`, detail: 'SUCCESS: NEW ENCRYPTED KEY GENERATED & SHIFTED TO SECURED POOL', isHighlight: true },
           ...prev,
         ]);
-        setStatusToast(`CREDENTIALS ROTATED FOR ${container.title}`);
+        setStatusToast(`CREDENTIALS ROTATED & CONTAINER SECURED: ${container.title}`);
       } else if (type === 'revoke') {
         await revokeContainer(container.id);
         setContainers((prev) =>
           prev.map((c) =>
             c.id === container.id
-              ? { ...c, isRevealed: false, value: '••••••••••••••••••••', statusText: 'ACCESS REVOKED & STOPPED', statusType: 'stopped' }
+              ? { ...c, isRevealed: false, value: '••••••••••••••••••••', statusText: 'ACCESS REVOKED & LOCKED', statusType: 'stopped' }
               : c
           )
         );
         setAccessLogs((prev) => [
-          { time: timeStr, user: 'USR_ADMIN_01', action: `REVOKED: ${container.title}`, detail: 'ACCESS STOPPED & CONTAINED', isHighlight: true },
+          { time: timeStr, user: 'USR_ADMIN_01', action: `REVOKED: ${container.title}`, detail: 'CONTAINER LOCKED & ACCESS STOPPED', isHighlight: true },
           ...prev,
         ]);
-        setStatusToast(`ACCESS STOPPED & REVOKED FOR ${container.title}`);
+        setStatusToast(`ACCESS REVOKED FOR ${container.title}`);
       }
     } catch (err) {
       setStatusToast(`ACTION EXECUTED FOR ${container.title}`);
@@ -133,11 +151,45 @@ const VaultView = () => {
     }
   };
 
+  const handleAddContainer = (e) => {
+    e.preventDefault();
+    if (!newContainerName) return;
+
+    const newObj = {
+      id: newContainerName.toUpperCase().replace(/\s+/g, '_'),
+      type: 'key',
+      tag: newContainerTag,
+      title: newContainerName.toUpperCase().replace(/\s+/g, '_'),
+      value: '••••••••••••••••••••',
+      rawSecret: newContainerSecret || 'sec_key_' + Math.random().toString(36).substring(2, 12),
+      statusText: 'CREATED: JUST NOW',
+      statusType: 'normal',
+      isDue: false,
+      isRevealed: false,
+    };
+
+    setContainers((prev) => [newObj, ...prev]);
+    setAddModalOpen(false);
+    setNewContainerName('');
+    setNewContainerSecret('');
+    setStatusToast(`NEW ENCRYPTED CONTAINER CREATED: ${newObj.title}`);
+    setTimeout(() => setStatusToast(null), 3000);
+  };
+
   const handleApplyPolicies = async () => {
     await updateConfig({ autoRotate, strictTtl, ttlInterval });
     setStatusToast('ROTATION POLICIES UPDATED SUCCESSFULLY');
     setTimeout(() => setStatusToast(null), 3000);
   };
+
+  // Filter & Shift Container list dynamically by Category
+  const filteredContainers = containers.filter((c) => {
+    if (activeCategory === 'ALL') return true;
+    if (activeCategory === 'ROTATION_DUE') return c.isDue;
+    return c.tag === activeCategory;
+  });
+
+  const dueCount = containers.filter((c) => c.isDue).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, backgroundColor: '#000000', position: 'relative' }}>
@@ -197,18 +249,66 @@ const VaultView = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '16px' }}>
         {/* Left Column: ENCRYPTED CONTAINERS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Header Bar + Swifting Category Tabs */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1.5px', color: '#ffffff' }}>
-              ENCRYPTED CONTAINERS
+              ENCRYPTED CONTAINERS ({containers.length} ACTIVE {dueCount > 0 ? `| ${dueCount} DUE` : '| ALL SECURED'})
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>
-              12 ACTIVE
-            </div>
+
+            <button
+              onClick={() => setAddModalOpen(true)}
+              style={{
+                background: '#ffffff',
+                color: '#000000',
+                border: 'none',
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                padding: '4px 10px',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <Plus size={12} />
+              <span>ADD CONTAINER</span>
+            </button>
           </div>
 
-          {/* 2x2 Grid */}
+          {/* Category Filter Buttons ("Swifting / Shifting Tabs") */}
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {[
+              { id: 'ALL', label: `ALL (${containers.length})` },
+              { id: 'ROTATION_DUE', label: `ROTATION_DUE (${dueCount})`, isWarning: dueCount > 0 },
+              { id: 'PROD_ENV', label: 'PROD_ENV' },
+              { id: 'API_KEYS', label: 'API_KEYS' },
+              { id: 'CERTIFICATES', label: 'CERTIFICATES' },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                style={{
+                  background: activeCategory === cat.id ? (cat.isWarning ? '#ff4422' : '#ffffff') : '#111215',
+                  color: activeCategory === cat.id ? '#000000' : (cat.isWarning ? '#ff4422' : '#888888'),
+                  border: cat.isWarning ? '1px solid #ff4422' : '1px solid #22242a',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  padding: '3px 8px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 2x2 Grid of Vault Containers with Smooth Shifting Transition */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {containers.map((item) => {
+            {filteredContainers.map((item) => {
               const isStopped = item.statusType === 'stopped';
               return (
                 <div
@@ -222,6 +322,7 @@ const VaultView = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '12px',
+                    transition: 'all 0.3s ease',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -301,7 +402,7 @@ const VaultView = () => {
                             cursor: 'pointer',
                           }}
                         >
-                          STOP
+                          LOCK / STOP
                         </button>
                       )}
 
@@ -318,7 +419,7 @@ const VaultView = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        ROTATE
+                        {item.isDue ? 'ROTATE NOW' : 'ROTATE'}
                       </button>
                     </div>
                   </div>
@@ -425,14 +526,11 @@ const VaultView = () => {
         </div>
       </div>
 
-      {/* CONFIRMATION MODAL (To Access, Rotate, or Stop Container Access) */}
+      {/* CONFIRMATION MODAL */}
       {modalOpen && modalAction && (
         <div style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.85)',
           backdropFilter: 'blur(4px)',
           display: 'flex',
@@ -459,7 +557,7 @@ const VaultView = () => {
             <div style={{ marginTop: '16px', fontSize: '0.8rem', color: '#ffffff', lineHeight: 1.6 }}>
               You are requesting to{' '}
               <strong style={{ color: modalAction.type === 'revoke' ? '#ef4444' : '#ff4422' }}>
-                {modalAction.type === 'access' ? 'ACCESS & REVEAL' : modalAction.type === 'rotate' ? 'ROTATE CREDENTIALS FOR' : 'STOP & REVOKE ACCESS TO'}
+                {modalAction.type === 'access' ? 'ACCESS & REVEAL' : modalAction.type === 'rotate' ? 'ROTATE & SECURE CREDENTIALS FOR' : 'STOP & LOCK ACCESS TO'}
               </strong>{' '}
               container:
               <div style={{
@@ -475,7 +573,7 @@ const VaultView = () => {
                 {modalAction.container.title}
               </div>
               <div style={{ fontSize: '0.72rem', color: '#a0a4b0' }}>
-                This operation will be logged to the immutable security audit trail under user <strong>USR_ADMIN_01</strong>. Do you confirm authorization?
+                This operation will rotate/shift the container state and update the immutable security audit trail under user <strong>USR_ADMIN_01</strong>. Do you confirm authorization?
               </div>
             </div>
 
@@ -514,6 +612,76 @@ const VaultView = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ADD CONTAINER MODAL */}
+      {addModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+        }}>
+          <form onSubmit={handleAddContainer} style={{
+            background: '#111215',
+            border: '1px solid #333540',
+            borderRadius: '2px',
+            padding: '24px',
+            maxWidth: '420px',
+            width: '90%',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#ffffff', letterSpacing: '1px' }}>CREATE ENCRYPTED CONTAINER</div>
+              <X size={16} color="#888" style={{ cursor: 'pointer' }} onClick={() => setAddModalOpen(false)} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '0.65rem', color: '#888', marginBottom: '4px' }}>CONTAINER TITLE</div>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. REDIS_CACHE_SECRET"
+                  value={newContainerName}
+                  onChange={(e) => setNewContainerName(e.target.value)}
+                  style={{ width: '100%', background: '#08080a', border: '1px solid #333540', color: '#fff', fontSize: '0.78rem', padding: '8px', fontFamily: 'JetBrains Mono' }}
+                />
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.65rem', color: '#888', marginBottom: '4px' }}>ENVIRONMENT / TAG</div>
+                <select
+                  value={newContainerTag}
+                  onChange={(e) => setNewContainerTag(e.target.value)}
+                  style={{ width: '100%', background: '#08080a', border: '1px solid #333540', color: '#fff', fontSize: '0.78rem', padding: '8px', fontFamily: 'JetBrains Mono' }}
+                >
+                  <option value="PROD_ENV">PROD_ENV</option>
+                  <option value="API_KEYS">API_KEYS</option>
+                  <option value="CERTIFICATES">CERTIFICATES</option>
+                </select>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.65rem', color: '#888', marginBottom: '4px' }}>SECRET VALUE</div>
+                <input
+                  type="text"
+                  placeholder="Leave empty for auto-generated secret"
+                  value={newContainerSecret}
+                  onChange={(e) => setNewContainerSecret(e.target.value)}
+                  style={{ width: '100%', background: '#08080a', border: '1px solid #333540', color: '#fff', fontSize: '0.78rem', padding: '8px', fontFamily: 'JetBrains Mono' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                <button type="button" onClick={() => setAddModalOpen(false)} style={{ background: '#18191e', color: '#ccc', border: '1px solid #333540', padding: '8px 16px', fontSize: '0.72rem', fontWeight: 700 }}>CANCEL</button>
+                <button type="submit" style={{ background: '#ffffff', color: '#000', border: 'none', padding: '8px 18px', fontSize: '0.72rem', fontWeight: 800 }}>CREATE CONTAINER</button>
+              </div>
+            </div>
+          </form>
         </div>
       )}
     </div>
