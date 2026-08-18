@@ -16,7 +16,7 @@ AI-powered cybersecurity platform that detects threats, reconstructs attacks, si
 
 | Component | Technology |
 |-----------|-----------|
-| Frontend | React (Vite), Lucide  Recharts |
+| Frontend | React (Vite), Recharts |
 | Backend | Python, FastAPI |
 | Database | SQLite |
 | Simulation | NetworkX |
