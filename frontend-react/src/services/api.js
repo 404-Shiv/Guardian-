@@ -46,6 +46,27 @@ export const executeMitigation = async (incidentId, planId = 'plan_c') => {
   return response.data;
 };
 
+export const uploadLogFile = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/api/logs/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const getLogs = async () => {
+  const response = await api.get('/api/logs');
+  return response.data;
+};
+
+export const clearLogs = async () => {
+  const response = await api.delete('/api/logs');
+  return response.data;
+};
+
 // Vault REST Endpoints
 export const authorizeContainer = async (containerId) => {
   const response = await api.post(`/api/vault/containers/${containerId}/authorize`);
@@ -74,3 +95,4 @@ export const restartDaemon = async () => {
 };
 
 export default api;
+

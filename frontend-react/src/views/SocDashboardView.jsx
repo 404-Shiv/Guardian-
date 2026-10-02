@@ -21,7 +21,7 @@ const SocDashboardView = ({ stats, onNavigateToThreats }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, backgroundColor: '#000000' }}>
-      {/* Top Row: SYS.STATUS + DEFCON 2 Posture (Image 1) */}
+      {/* Top Row: SYS.STATUS + CYBER ORANGE ALERT Posture */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '16px' }}>
         {/* SYS.STATUS Card */}
         <div style={{ background: '#111215', border: '1px solid #22242a', padding: '24px', position: 'relative' }}>
@@ -54,7 +54,7 @@ const SocDashboardView = ({ stats, onNavigateToThreats }) => {
           </div>
         </div>
 
-        {/* DEFCON POSTURE White Glowing Card (Image 1) */}
+        {/* CYBER ORANGE ALERT White Glowing Card */}
         <div style={{
           background: '#ffffff',
           color: '#000000',
@@ -77,11 +77,11 @@ const SocDashboardView = ({ stats, onNavigateToThreats }) => {
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '2px', color: '#555555', textTransform: 'uppercase' }}>
             CURRENT POSTURE
           </div>
-          <div style={{ fontSize: '2.8rem', fontWeight: 900, letterSpacing: '3px', color: '#000000', margin: '6px 0' }}>
-            DEFCON 2
+          <div style={{ fontSize: '2.0rem', fontWeight: 900, letterSpacing: '1.5px', color: '#000000', margin: '6px 0' }}>
+            ORANGE ALERT
           </div>
           <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1.5px', color: '#333333' }}>
-            ELEVATED RISK PROTOCOL
+            CYBER SECURITY LEVEL 2 (HIGH)
           </div>
         </div>
       </div>

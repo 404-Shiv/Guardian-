@@ -46,6 +46,25 @@ function App() {
     fetchData();
   }, []);
 
+  const refreshAppData = async () => {
+    try {
+      const analyzeRes = await runAnalysis();
+      if (analyzeRes?.incident) {
+        setIncident(analyzeRes.incident);
+      }
+      const incData = await getIncidents();
+      if (incData?.incidents?.length > 0) {
+        setIncident(incData.incidents[0]);
+      }
+      const statsData = await getDashboardStats();
+      if (statsData) setStats(statsData);
+      const alertsData = await getAlerts();
+      if (alertsData?.alerts) setAlerts(alertsData.alerts);
+    } catch (err) {
+      console.error('Refresh data error:', err);
+    }
+  };
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -62,7 +81,7 @@ function App() {
           />
         );
       case 'threats':
-        return <ThreatsView alerts={alerts} />;
+        return <ThreatsView alerts={alerts} incident={incident} onRefreshData={refreshAppData} />;
       case 'vault':
         return <VaultView incident={incident} />;
       case 'config':
